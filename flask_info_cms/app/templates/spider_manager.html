@@ -6,5 +6,9 @@
 </head>
 <body>
     <p>爬虫管理</p>
+    <p>数据列表</p>
+    {% for user  in users %}
+        <p>用户名:{{ user.username}} 密码:{{ user.password }}</p>
+    {% endfor %}
 </body>
 </html>
