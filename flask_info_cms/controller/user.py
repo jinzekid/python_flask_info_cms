@@ -1,32 +1,37 @@
 # Author: Jason Lu
-from flask import jsonify
-from app import app, mongo
+from app import mongo
 
 
 class UserController(object):
     @classmethod
     def get_users(cls, filter=0, name=None):
+        """
+        :param filter: 过滤方式，0：全部记录返回，1：特定查询，根据后面参数内容
+        :param name: 过滤需要查找的用户姓名
+        :return: 查找，404：未查找到用户记录，users：用户列表
+        """
         user = mongo.db.users
 
         list_users = []
-        print('>>:filter:%s'%str(filter))
         if filter == 0:
             print(">>:search user controller...")
-            rows = user.find({},{'_id':0, 'username':1, 'password':1})
+            rows = user.find(
+                {},
+                {'_id': 0, 'username': 1, 'password': 1}
+            )
             for row in rows:
-                print(row)
                 list_users.append(row)
 
-            return {'code':1, 'users':list_users}
-
+            return {'code': 1, 'users': list_users}
 
         if name is not None:
-            someone = user.find_one({
-                'username': name
-            },{'_id':0, 'username':1, 'password': 1})
+            someone = user.find_one(
+                {'username': name},
+                {'_id': 0, 'username': 1, 'password': 1}
+            )
 
         if someone is None:
             return {'code': 404}
 
         list_users.append(someone)
-        return {'code':1, 'users':list_users}
+        return {'code': 1, 'users': list_users}
