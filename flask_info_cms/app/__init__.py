@@ -1,19 +1,19 @@
-# Author: Jason Lu
-from flask import Flask, request
-# from flask.ext.pymongo import PyMongo
-from flask_restful import Api, Resource
+from flask import Flask
 from flask_pymongo import PyMongo
+from config import config
+from controller.database import ManagerDBMongo
 
-app = Flask(__name__)
-# 读取config
-app.config.from_object('config')
-# 数据库
-app.config.update(
-    MONGO_URI = 'mongodb://localhost:27017/mydatabase',
-    MONGO_TEST_URI = 'mongodb://localhost:27017/test'
-)
+def create_app(config_name):
+    app = Flask(__name__)
+    app.config.from_object(config[config_name])
 
-mongo = PyMongo(app)
-# mongo_test = PyMongo(app, config_prefix = 'MONGO_TEST')
+    #mongo.init_app(app)
+    print(app.config)
+    return app
 
-from app import views
+
+ManagerDBMongo.init_db(db='mydatabase_test', col='users2')
+col_users = ManagerDBMongo.get_collection('users2')
+app = create_app('product')
+
+from app.main import views

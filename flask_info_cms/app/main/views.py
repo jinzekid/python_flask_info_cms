@@ -1,16 +1,18 @@
 # Author: Jason Lu
 
-from flask import render_template
-from flask import flash
-from flask import url_for
-from flask import redirect
-from flask import session
 from flask import jsonify
+from flask import redirect
+from flask import render_template
 from flask import request
-from app import app, mongo
-from .forms_login import LoginForm
+from flask import session
+from flask import url_for
 
+from app import app, col_users
+#from manage import app, mongo
+from app.main.forms_login import LoginForm
 from controller.user import UserController
+
+
 # 引入模型
 # from models.user import User
 # from models.device import Device1
@@ -97,13 +99,13 @@ MongoDB数据库操作, api接口地址
 # 添加数据
 @app.route('/todo/api/v1/add', methods=['GET', 'POST'])
 def add():
-    user = mongo.db.users
+    user = col_users#mongo.db.users
     if not 'username' in request.form or\
             not 'password' in request.form:
         print(request)
         abort(404)
 
-    user = mongo.db.users
+    # user = mongo.db.users
     username = request.form['username']
     password = request.form['password']
     user.insert({'username':username,'password':password})
@@ -135,7 +137,7 @@ def update():
         print(request)
         abort(404)
 
-    user = mongo.db.users
+    user = col_users#mongo.db.users
     username = request.form['username']
     someone = user.find_one({
         'username': username
@@ -153,7 +155,7 @@ def update():
 # 删除数据
 @app.route('/todo/api/v1/del/<string:username>', methods=['GET'])
 def delete(username):
-    user = mongo.db.users
+    user = col_users#mongo.db.users
     someone = user.find_one({'username':username})
 
     if someone is not None:

@@ -1,5 +1,5 @@
 # Author: Jason Lu
-from app import mongo
+from app import col_users
 
 
 class UserController(object):
@@ -10,12 +10,12 @@ class UserController(object):
         :param name: 过滤需要查找的用户姓名
         :return: 查找，404：未查找到用户记录，users：用户列表
         """
-        user = mongo.db.users
+        users = col_users#mongo.db.users
 
         list_users = []
         if filter == 0:
             print(">>:search user controller...")
-            rows = user.find(
+            rows = users.find(
                 {},
                 {'_id': 0, 'username': 1, 'password': 1}
             )
@@ -25,7 +25,7 @@ class UserController(object):
             return {'code': 1, 'users': list_users}
 
         if name is not None:
-            someone = user.find_one(
+            someone = users.find_one(
                 {'username': name},
                 {'_id': 0, 'username': 1, 'password': 1}
             )
