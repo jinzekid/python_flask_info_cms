@@ -13,6 +13,7 @@ class ManagerDBMongo(object):
 
     """
     单利模式的ManagerDBMongo
+    可以在多线程下使用
     """
     def __new__(cls, *args, **kwargs):
         if not hasattr(ManagerDBMongo, "_instance"):
