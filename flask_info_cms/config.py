@@ -6,6 +6,7 @@
 
 
 import os
+from datetime import timedelta
 from controller import database
 
 
@@ -21,7 +22,7 @@ class Config(object):
 
 class DevelopmentConfig(Config):
     DEBUG = True
-    CSRF_ENABLED = False
+    CSRF_ENABLED = True
     #MONGO_URI = 'mongodb://localhost:27017/dev_database'
 
 class ProductionConfig(Config):

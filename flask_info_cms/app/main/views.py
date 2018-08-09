@@ -6,12 +6,13 @@ from flask import render_template
 from flask import request
 from flask import session
 from flask import url_for
+from flask import copy_current_request_context
 
-from app import app, col_users
+from app import app, col_users, csrf
 #from manage import app, mongo
 from app.main.forms_login import LoginForm
 from controller.user import UserController
-
+from controller.ipmanager import ManagerProxyIP as MGIH
 
 # 引入模型
 # from models.user import User
@@ -60,17 +61,56 @@ def logout():
     # logout_user()
     return redirect(url_for('login'))
 
+################################################################
+# 爬虫相关页面
 @app.route('/spider_manager')
 def spider_manager():
     json_users = UserController().get_users(0)
     return render_template('spider_manager.html', title='爬虫管理',
                            users=json_users['users'])
 
+@csrf.exempt # 移除csrf验证
+@app.route('/spider_ip_manager', methods=['GET', 'POST'])
+def spider_ip_manager():
+
+    if request.method == 'POST':
+        if 'btn_download' in request.form:
+            print(request.form)
+            start_page = request.form['start_page']
+            end_page = request.form['end_page']
+            MGIH.config(debug=True)
+            MGIH.init_grab_ip_html(start_page, end_page)
+            # 方法一：使用线程子类下载网页
+            #MGIH.start_grab_ip_html()
+
+            # 方法二：使用底层_thread线程下载网页
+            MGIH.start_parse_ip_use_thread()
+        elif 'btn_show_list' in request.form:
+            print("show list...")
+
+    print(">>:返回模版页面...")
+    return render_template('spider_ip_manager.html',
+                           title='IP地址管理',
+                           download_precent = MGIH.download_precent,
+                           show_download_info = MGIH.show_precent)
+
+@app.route('/download_task', methods=['GET', 'POST'])
+def download_task():
+    print("page from:")
+
+
+################################################################
+# 数据相关页面
 @app.route('/data_manager')
 def data_manager():
     return render_template('data_manager.html', title='数据管理')
 
-@app.route('/todo/api/v1.0/tasks', methods=['GET'])
+
+
+################################################################
+############################接口相关####################################
+@csrf.exempt
+@app.route('/todo/api/v1.0/tasks', methods=['GET', 'POST'])
 def get_tasks():
     return jsonify({
         'task':'test'
@@ -92,7 +132,7 @@ from flask import make_response
 def not_found(error):
     return make_response(jsonify({'error': 'Not found'}), 404)
 
-################################################################
+
 """
 MongoDB数据库操作, api接口地址
 """

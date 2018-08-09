@@ -10,5 +10,6 @@
     {% for user  in users %}
         <p>用户名:{{ user.username}} 密码:{{ user.password }}</p>
     {% endfor %}
+    <a href="{{ url_for('spider_ip_manager') }}">网络爬虫代理地址</a>
 </body>
 </html>
