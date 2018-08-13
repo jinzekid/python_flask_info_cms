@@ -73,13 +73,26 @@ def spider_manager():
 @app.route('/spider_ip_manager', methods=['GET', 'POST'])
 def spider_ip_manager():
 
+    debug = False
+    cnt = 0
+
+    #def test():
+    #    while True:
     if request.method == 'POST':
         if 'btn_download' in request.form:
-            print(request.form)
-            start_page = request.form['start_page']
-            end_page = request.form['end_page']
-            MGIH.config(debug=True)
-            MGIH.init_grab_ip_html(start_page, end_page)
+            import os
+            print(">>:parent pid:%d" % os.getpid())
+            if debug:
+                import _thread as thread
+                start_page = request.form['start_page']
+                end_page = request.form['end_page']
+                thread.start_new(func_test, (start_page, end_page,))
+            else:
+                print(request.form)
+                start_page = request.form['start_page']
+                end_page = request.form['end_page']
+                MGIH.config(debug=True)
+                MGIH.init_grab_ip_html(start_page, end_page)
             # 方法一：使用线程子类下载网页
             #MGIH.start_grab_ip_html()
 
@@ -88,6 +101,11 @@ def spider_ip_manager():
         elif 'btn_show_list' in request.form:
             print("show list...")
 
+    #import _thread as thread
+    #thread.start_new(test, ())
+
+    import os
+    print("current pid: %d" % (os.getpid()))
     print(">>:返回模版页面...")
     return render_template('spider_ip_manager.html',
                            title='IP地址管理',
@@ -97,6 +115,24 @@ def spider_ip_manager():
 @app.route('/download_task', methods=['GET', 'POST'])
 def download_task():
     print("page from:")
+
+
+def func_test(start_page, end_page):
+    #if request.method == 'POST':
+    #    if 'btn_download' in request.form:
+    #print(request.form)
+    #start_page = request.form['start_page']
+    #end_page = request.form['end_page']
+    MGIH.config(debug=True)
+    MGIH.init_grab_ip_html(start_page, end_page)
+            # 方法一：使用线程子类下载网页
+            #MGIH.start_grab_ip_html()
+
+            # 方法二：使用底层_thread线程下载网页
+    MGIH.start_parse_ip_use_thread()
+     #   elif 'btn_show_list' in request.form:
+     #       print("show list...")
+    #print("method func_test")
 
 
 ################################################################

@@ -71,6 +71,22 @@ class HeaderFactory():
 
 #######################################################################
 
+from datetime import datetime as dt
+def time_calcuate(func):
+    def inner(*args, **kwargs):
+        start = dt.now()
+        ret = func(*args, **kwargs)
+        delta = dt.now() - start
+        print('elapsed time:' , delta.microseconds)
+        return ret
+    return inner
 
+
+def clear_list(list):
+    while len(list) > 0:
+            for obj in list:
+               list.remove(obj)
+
+    return list
 
 

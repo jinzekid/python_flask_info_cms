@@ -3,10 +3,12 @@ import time
 import urllib.request
 import re
 from threading import Thread, Lock
+import controller.util as cutil
 from controller.util import HeaderFactory
+from controller.util import time_calcuate as tc
 
 # 全局变量，需要下载的网页
-g_stack_download = []
+#g_stack_download = []
 g_stack_need_to_parse = []
 
 class ManagerProxyIP(object):
@@ -16,6 +18,7 @@ class ManagerProxyIP(object):
     total_page = 0
     show_precent = False
     debug = False
+    download_tasks = []
 
     def __init__(cls, *args, **kwargs):
         if not hasattr(ManagerProxyIP, '_instance'):
@@ -42,7 +45,8 @@ class ManagerProxyIP(object):
         int_e_p = int(end_page)
         cnt = int_e_p - int_s_p + 1
 
-        global g_stack_download
+        #global g_stack_download
+        #g_stack_download = []
 
         if cls.debug:
             print(">>:一共下载网页数:%d" % cnt)
@@ -50,12 +54,24 @@ class ManagerProxyIP(object):
         for i in range(cnt):
             cur_page = int_e_p - i
             url_ip_html = url + str(cur_page)
-            g_stack_download.append(url_ip_html)
+            cls.download_tasks.append(url_ip_html)
 
-        cls.total_page = len(g_stack_download)
+        cls.total_page = len(cls.download_tasks)
         cls.show_precent = True
 
-        print(g_stack_download)
+        print(cls.download_tasks)
+
+    @classmethod
+    def clear_tasks(cls):
+        #global g_stack_download
+
+        cls.download_tasks = cutil.clear_list(cls.download_tasks)
+
+        #while len(cls.download_tasks) > 0:
+        #    for obj in cls.download_tasks:
+        #        cls.download_tasks.remove(obj)
+
+        print("clear all tasks...%s" % cls.download_tasks)
 
 
 ##############################################################################
@@ -68,21 +84,26 @@ class ManagerProxyIP(object):
         开启多线程，下载网页
         :return:
         """
-        global g_stack_download
-        for url in g_stack_download:
+        #global g_stack_download
+        for url in cls.download_tasks:
             thread_download_html = ThreadDownloadIPHtml(url)
             thread_download_html.start()
 
     @classmethod
     def start_parse_ip_use_thread(cls):
         download_threads = ThreadDownloadIPHtml_use_thread(
-            g_stack_download)
+            cls.download_tasks)
         download_threads.start(cls.download_finish)
 
     @classmethod
-    def download_finish(cls):
-        cls.download_precent = 100
-        print(">>:所有网页下载完毕...")
+    def download_finish(cls, t, list_tasks_failed):
+        #cls.download_precent = t#100
+        if len(list_tasks_failed) > 0:
+            print(">>:失败任务列表 %s" % list_tasks_failed)
+        else:
+            print(">>:所有网页下载完毕...%d" % t)
+            cls.clear_tasks()
+
 ##############################################################################
 
 
@@ -272,16 +293,27 @@ import _thread as thread
 import os
 class ThreadDownloadIPHtml_use_thread(object):
 
-    #thread_lock = thread.allocate_lock()
+    thread_lock = thread.allocate_lock()
+
     def __init__(self, tasks):
         self.tasks = tasks
         self.thread_mutexs = [False] * len(tasks)
+        self.error_task = []
+
+        print("ThreadDownloadIPHtml_use_thread current pid: %d"
+              "" % (os.getpid()))
+        print("Task numbers: %d" % len(tasks))
+
+        #print(">>:开启新进程...")
+        #self.f = ForkDownloadIPHtml()
+        #self.f.start()
 
     def task(self, i, url):
         """
         下载网页
         :return:
         """
+        self.thread_lock.acquire()
         headers = HeaderFactory().header_info
         opener = urllib.request.build_opener()
         opener.addheaders = headers
@@ -295,26 +327,58 @@ class ThreadDownloadIPHtml_use_thread(object):
             fhandle = open(str_html, 'wb')
             fhandle.write(data)
             fhandle.close()
-            print('>>:finished save ip html....%s' % (str_html))
+            #print('>>:finished save ip html....%s' % (str_html))
         except Exception as e:
+            # 移除该网页
+            self.thread_mutexs[i] = True
+            self.error_task.append({'id': i, 'url': url})
             print(">>:download exception:%s" % e)
         else:
-            print('>>:需要解析的网页: %s' % (str_html))
-            print('==================')
-            print('id=%d, 线程: %s' % (i, thread.get_ident()))
+            #print('>>:需要解析的网页: %s' % (str_html))
+            #print('==================')
+            #print('id=%d, 线程: %s' % (i, thread.get_ident()))
             self.thread_mutexs[i] = True
+
+        #time.sleep(2)
+        self.thread_lock.release()
         pass
 
+    @tc
     def start(self, func_complete= None):
-
         for i in range(len(self.tasks)):
             url = self.tasks[i]
             thread.start_new_thread(self.task, (i, url))
 
-        while False in self.thread_mutexs: pass
+        while False in self.thread_mutexs:
+            pass
 
         print(':>>下载结束...')
-        if func_complete: func_complete()
+        if func_complete: func_complete(100, self.error_task)
+
+
+"""
+使用进程fork, 下载页面
+"""
+class ForkDownloadIPHtml(object):
+
+    def __init__(self):
+        pass
+
+    def start(self):
+        while True:
+            new_pid = os.fork()
+            if new_pid == 0: # 子进程
+                self.child()
+            else:
+                print('Hello from parent %s, child p:%s' % (os.getpid(),
+                                                            new_pid))
+
+            if input() == 'q': break
+
+    def child(self):
+        print('hello from child', os.getpid())
+        os._exit(0) # 否则将回到父循环中
+
 
 
 # 解析ip网页内容
