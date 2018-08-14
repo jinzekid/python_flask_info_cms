@@ -9,7 +9,7 @@ from controller.util import time_calcuate as tc
 
 # 全局变量，需要下载的网页
 #g_stack_download = []
-g_stack_need_to_parse = []
+#g_stack_need_to_parse = []
 
 class ManagerProxyIP(object):
     # 单利模式的锁
@@ -19,6 +19,7 @@ class ManagerProxyIP(object):
     show_precent = False
     debug = False
     download_tasks = []
+    parse_tasks = []
 
     def __init__(cls, *args, **kwargs):
         if not hasattr(ManagerProxyIP, '_instance'):
@@ -45,8 +46,6 @@ class ManagerProxyIP(object):
         int_e_p = int(end_page)
         cnt = int_e_p - int_s_p + 1
 
-        #global g_stack_download
-        #g_stack_download = []
 
         if cls.debug:
             print(">>:一共下载网页数:%d" % cnt)
@@ -63,16 +62,8 @@ class ManagerProxyIP(object):
 
     @classmethod
     def clear_tasks(cls):
-        #global g_stack_download
-
         cls.download_tasks = cutil.clear_list(cls.download_tasks)
-
-        #while len(cls.download_tasks) > 0:
-        #    for obj in cls.download_tasks:
-        #        cls.download_tasks.remove(obj)
-
         print("clear all tasks...%s" % cls.download_tasks)
-
 
 ##############################################################################
     """
@@ -84,35 +75,57 @@ class ManagerProxyIP(object):
         开启多线程，下载网页
         :return:
         """
-        #global g_stack_download
         for url in cls.download_tasks:
             thread_download_html = ThreadDownloadIPHtml(url)
             thread_download_html.start()
 
+
     @classmethod
-    def start_parse_ip_use_thread(cls):
-        download_threads = ThreadDownloadIPHtml_use_thread(
-            cls.download_tasks)
+    def start_download_ip_use_thread(cls):
+        print(">>:开始启动解析多线程...")
+        download_threads = ThreadDownloadIPHtml_use_thread(cls.download_tasks)
         download_threads.start(cls.download_finish)
 
     @classmethod
-    def download_finish(cls, t, list_tasks_failed):
-        #cls.download_precent = t#100
-        if len(list_tasks_failed) > 0:
-            print(">>:失败任务列表 %s" % list_tasks_failed)
+    def download_finish(cls, t, tasks_failed, tasks_parse):
+
+        # 保存需要解析的网址
+        print(">>:需要解析的网址列表: %s" % cls.parse_tasks)
+        print(">>:222需要解析的网址列表: %s" % tasks_parse)
+
+        cls.parse_tasks = tasks_parse
+        if len(tasks_failed) > 0:
+            print(">>:失败任务列表 %s" % tasks_failed)
         else:
             print(">>:所有网页下载完毕...%d" % t)
             cls.clear_tasks()
 
+        # 开始解析ip地址
+        #cls.start_parse_ip_use_thread()
+
 ##############################################################################
-
-
+    """
+    解析已经下载的地址
+    """
     @classmethod
     def start_parse_ip(cls):
-        global g_stack_need_to_parse
-        for path_html in g_stack_need_to_parse:
+        for path_html in cls.parse_tasks:
             thread_parse_ip_html = ThreadParseIPHtml(path_html)
             thread_parse_ip_html.start()
+
+    @classmethod
+    def start_parse_ip_use_thread(cls):
+        pass
+
+    @classmethod
+    def start_parse_ip_use_basic_thread(cls):
+        print(">>:开始启动解析多线程...")
+        download_threads = ThreadParseIPHtml(cls.parse_tasks)
+        download_threads.start_parse()
+        pass
+
+##############################################################################
+
 
     @classmethod
     def cal_download_precent(cls):
@@ -299,6 +312,7 @@ class ThreadDownloadIPHtml_use_thread(object):
         self.tasks = tasks
         self.thread_mutexs = [False] * len(tasks)
         self.error_task = []
+        self.parse_htmls = []
 
         print("ThreadDownloadIPHtml_use_thread current pid: %d"
               "" % (os.getpid()))
@@ -338,6 +352,7 @@ class ThreadDownloadIPHtml_use_thread(object):
             #print('==================')
             #print('id=%d, 线程: %s' % (i, thread.get_ident()))
             self.thread_mutexs[i] = True
+            self.parse_htmls.append(str_html)
 
         #time.sleep(2)
         self.thread_lock.release()
@@ -353,53 +368,49 @@ class ThreadDownloadIPHtml_use_thread(object):
             pass
 
         print(':>>下载结束...')
-        if func_complete: func_complete(100, self.error_task)
-
-
-"""
-使用进程fork, 下载页面
-"""
-class ForkDownloadIPHtml(object):
-
-    def __init__(self):
-        pass
-
-    def start(self):
-        while True:
-            new_pid = os.fork()
-            if new_pid == 0: # 子进程
-                self.child()
-            else:
-                print('Hello from parent %s, child p:%s' % (os.getpid(),
-                                                            new_pid))
-
-            if input() == 'q': break
-
-    def child(self):
-        print('hello from child', os.getpid())
-        os._exit(0) # 否则将回到父循环中
+        if func_complete: func_complete(100, self.error_task, self.parse_htmls)
 
 
 
 # 解析ip网页内容
-class ThreadParseIPHtml(threading.Thread):
+"""
+使用Thread子类解析
+"""
+class ThreadParseIPHtml(object):
 
-    def __init__(self, ip_html):
+    def __init__(self, parse_htmls):
         threading.Thread.__init__(self)
-        self.ip_html = ip_html
+        self.parse_htmls = parse_htmls
+        self.thread_mutex = [False] * len(parse_htmls)
 
-    def run(self):
+    def start_parse(self, func_complete=None):
+
+        if len(self.parse_htmls) <= 0:
+            print(">>:似乎没有需要解析的网页，解析结束:(")
+            return
+
+        for i in range(len(self.parse_htmls)):
+            str_html = self.parse_htmls[i]
+            thread.start_new_thread(self.parsing_html, (i, str_html,))
+
+        while False in self.thread_mutex:pass
+
+        print(">>:解析完毕...")
+        if func_complete: func_complete()
+
+    def parsing_html(self, i, ip_html):
         """
         解析IP网页内容
         """
         print(">>:开始解析ip地址...")
+
         import pandas as pd
-        with open(self.ip_html, 'r') as f:
+        with open(ip_html, 'r') as f:
             data = f.read()
             list_ip_address = ManagerProxyIP.bs4_paraser(data)
 
             data = pd.DataFrame(
-                list_ip_address[:10],
+                list_ip_address[:5],
                 columns=['ip', 'port', 'alive']
             )
             list_avaliable_ip = ManagerProxyIP.get_useful_ip_address(
@@ -407,8 +418,13 @@ class ThreadParseIPHtml(threading.Thread):
 
             df_avalibable_ip = pd.DataFrame((list_avaliable_ip))
 
-            print(">>:解析结束...")
-            print("=================%s=======================" % self.ip_html)
+            print(">>:解析结束...%s" % ip_html)
+            #print("=================%s=======================" % self.ip_html)
+            #print(data)
             print(df_avalibable_ip)
             print("===========================================")
+            self.thread_mutex[i] = True
+
+
+
 

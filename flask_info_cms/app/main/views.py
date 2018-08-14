@@ -97,9 +97,12 @@ def spider_ip_manager():
             #MGIH.start_grab_ip_html()
 
             # 方法二：使用底层_thread线程下载网页
-            MGIH.start_parse_ip_use_thread()
+            MGIH.start_download_ip_use_thread()
         elif 'btn_show_list' in request.form:
             print("show list...")
+        elif 'btn_parse' in request.form:
+            print(">>:start parsing ip...")
+            MGIH.start_parse_ip_use_basic_thread()
 
     #import _thread as thread
     #thread.start_new(test, ())
