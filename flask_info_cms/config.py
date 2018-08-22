@@ -7,7 +7,7 @@
 
 import os
 from datetime import timedelta
-from controller import database
+from controller import dbmanager
 
 
 basedir = os.path.abspath(os.path.dirname(__file__))

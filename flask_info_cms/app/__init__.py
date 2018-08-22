@@ -2,7 +2,7 @@ from flask import Flask
 from datetime import timedelta
 from flask_pymongo import PyMongo
 from config import config
-from controller.database import ManagerDBMongo
+from controller.dbmanager import ManagerDBMongo as MDB
 
 from flask_wtf.csrf import CsrfProtect
 # from flask_cache import Cache
@@ -23,9 +23,13 @@ def create_app(config_name):
     return app
 
 
+# 初始化数据空连接：localhost 端口号：27017
+MDB.init_db_client()
+# 获取数据库列表
+col_users = MDB.get_collection(db='mydatabase_test', col='users2')
+col_ips = MDB.get_collection(db='mydatabase_test', col='available_ips')
+col_ips2 = MDB.get_collection(db='mydatabase_test2', col='available_ips')
 
-ManagerDBMongo.init_db(db='mydatabase_test', col='users2')
-col_users = ManagerDBMongo.get_collection('users2')
 app = create_app('product')
 
 from app.main import views

@@ -7,50 +7,85 @@
 <body>
     <p>{{ title }}</p>
 
-    <form method="post" id="id_form_download">
-        <input type="text" name="btn_download" value="下载列表"
-               id="form_download"
-               style="display:
-         none;">
-        起始页：<input type="text" name="start_page" id="start_page">
-        结束页：<input type="text" name="end_page" id="end_page">
-        <input type="submit" name="btn" value="开始下载">
-    </form>
-
-    <div style="height: 30px;background: white;width: 100%"></div>
-
     <div>
-        <form method="post" id="id_form_show">
-            <input type="submit" name="btn_show_list" id="id_btn_show" value="显示列表">
-            <input type="submit" name="btn_parse" id="id_btn_parse" value="解析地址">
-        </form>
+        <span>抓取页面范围：</span>
+        <input type="text" value="" id="id_input_start_page" placeholder="起始页"/>
+        <input type="text" value="" id="id_input_end_page" placeholder="结束页"/>
+        <!--<div id="id_btn_start_download" style="width: 100px;height:50px;
+        background: white;
+        border:1px solid #d7d7d7"><span>开始下载</span></div>-->
+        <button type="button" id="id_btn_start_download">开始下载</button>
     </div>
-
-
 
     <div style="margin-top: 10px; height: 2px; width: 100%; background:
     black"></div>
-    <p> {{ show_download_info }}</p>
-    {% if show_download_info %}
-    <div>
-        <p>下载进度: {{ download_precent }}</p>
+    <button style="display:none;" type="button"
+            id="id_btn_start_parse_ip">解析IP网页</button>
+
+    <div id="content">
+
     </div>
-    {% endif %}
+
+    <div style="margin-top: 10px; height: 2px; width: 100%; background:
+    black"></div>
+
+    <div><span id="id_span_status"></span></div>
 
     <script src="../static/js/jquery.min.js"></script>
     <script>
-       $.ajax({
-           url: "/todo/api/v1.0/tasks",
-           type: 'post',
-           data: '',
-           dataType: 'json',
-           success: function (res) {
-               console.log(res);
-           },
-           error: function (xhr, msg, exc) {
+        //下载网页
+        $("#id_btn_start_download").on('click', function(){
+            var start_page = $("#id_input_start_page").val()
+            var end_page = $("#id_input_end_page").val()
 
-           }
-        });
+            if (start_page > end_page) {
+                alert('起始页不能大于结束页')
+                return
+            }
+
+            $("#id_span_status").html('正在下载...')
+
+            $.ajax({
+                url: "http://127.0.0.1:5000/todo/api/v1.0/startDownloadIPHtml",
+                type: 'post',
+                data: {data:JSON.stringify({
+                    'startPage': start_page,
+                    'endPage': end_page
+                    })},
+                dataType: 'json',
+                success: function (res) {
+                    console.log(res);
+                    $("#id_span_status").html('下载完毕!');
+                    $("#id_btn_start_parse_ip").show();
+                },
+                error: function (xhr, msg, exc) {
+
+                }
+            })
+        })
+
+        // 解析IP地址
+        $("#id_btn_start_parse_ip").on('click', function(){
+            $("#id_span_status").html('正在解析...')
+            $("#id_btn_start_parse_ip").hide();
+            $("#id_btn_start_download").hide();
+
+            $.ajax({
+                url: "http://127.0.0.1:5000/todo/api/v1.0/parseIPHtml",
+                type: 'post',
+                data: "",
+                dataType: 'json',
+                success: function (res) {
+                    console.log(res);
+                    $("#id_span_status").html('解析完毕!');
+
+                    $("#id_btn_start_download").show();
+                },
+                error: function (xhr, msg, exc) {
+
+                }
+            })
+        })
     </script>
 </body>
 </html>

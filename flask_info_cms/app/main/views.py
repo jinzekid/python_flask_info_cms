@@ -13,6 +13,7 @@ from app import app, col_users, csrf
 from app.main.forms_login import LoginForm
 from controller.user import UserController
 from controller.ipmanager import ManagerProxyIP as MGIH
+from controller.ipmanager import MS
 
 # 引入模型
 # from models.user import User
@@ -63,8 +64,18 @@ def logout():
 
 ################################################################
 # 爬虫相关页面
-@app.route('/spider_manager')
+@csrf.exempt # 移除csrf验证
+@app.route('/spider_manager', methods=['GET', 'POST'])
 def spider_manager():
+
+    if request.method == 'POST':
+        if 'btn_add_data' in request.form:
+            print(">>:新增数据...")
+        elif 'btn_del_data' in request.form:
+            print(">>:删除数据...")
+        elif 'btn_update_data' in request.form:
+            print(">>:更新数据...")
+
     json_users = UserController().get_users(0)
     return render_template('spider_manager.html', title='爬虫管理',
                            users=json_users['users'])
@@ -72,29 +83,37 @@ def spider_manager():
 @csrf.exempt # 移除csrf验证
 @app.route('/spider_ip_manager', methods=['GET', 'POST'])
 def spider_ip_manager():
-
+    import os
+    import _thread as thread
     debug = False
     cnt = 0
 
     #def test():
     #    while True:
     if request.method == 'POST':
+        # 1.改变状态
         if 'btn_download' in request.form:
-            import os
+            MGIH.set_status(MS.loading_htmls)
+            print("download...")
+        elif 'btn_show_list' in request.form:
+            print("show list...")
+            MGIH.set_status(MS.finish_download)
+        elif 'btn_parse' in request.form:
+            MGIH.set_status(MS.parsing_ips)
+            print("parse...")
+        """
+        if 'btn_download' in request.form:
             print(">>:parent pid:%d" % os.getpid())
-            if debug:
-                import _thread as thread
-                start_page = request.form['start_page']
-                end_page = request.form['end_page']
-                thread.start_new(func_test, (start_page, end_page,))
-            else:
-                print(request.form)
-                start_page = request.form['start_page']
-                end_page = request.form['end_page']
-                MGIH.config(debug=True)
-                MGIH.init_grab_ip_html(start_page, end_page)
+            print(request.form)
+            start_page = request.form['start_page']
+            end_page = request.form['end_page']
+            MGIH.config(debug=True)
+            print("start page: %s" % start_page)
+            print("end page: %s" % end_page)
+
+            MGIH.init_grab_ip_html(start_page, end_page)
             # 方法一：使用线程子类下载网页
-            #MGIH.start_grab_ip_html()
+            # MGIH.start_grab_ip_html()
 
             # 方法二：使用底层_thread线程下载网页
             MGIH.start_download_ip_use_thread()
@@ -102,40 +121,25 @@ def spider_ip_manager():
             print("show list...")
         elif 'btn_parse' in request.form:
             print(">>:start parsing ip...")
-            MGIH.start_parse_ip_use_basic_thread()
+            # MGIH.start_parse_ip_use_basic_thread() # 使用底层_thread进行解析地址
+            MGIH.start_parse_ip_use_sub_thread() # 使用高级thread的子类进行解析地址
+        """
 
-    #import _thread as thread
-    #thread.start_new(test, ())
-
-    import os
     print("current pid: %d" % (os.getpid()))
+    print("status: %s" % MGIH.status)
     print(">>:返回模版页面...")
     return render_template('spider_ip_manager.html',
                            title='IP地址管理',
-                           download_precent = MGIH.download_precent,
-                           show_download_info = MGIH.show_precent)
+                           status = MGIH.status(),
+                           )
 
+
+
+import time
 @app.route('/download_task', methods=['GET', 'POST'])
 def download_task():
+    time.sleep(3)
     print("page from:")
-
-
-def func_test(start_page, end_page):
-    #if request.method == 'POST':
-    #    if 'btn_download' in request.form:
-    #print(request.form)
-    #start_page = request.form['start_page']
-    #end_page = request.form['end_page']
-    MGIH.config(debug=True)
-    MGIH.init_grab_ip_html(start_page, end_page)
-            # 方法一：使用线程子类下载网页
-            #MGIH.start_grab_ip_html()
-
-            # 方法二：使用底层_thread线程下载网页
-    MGIH.start_parse_ip_use_thread()
-     #   elif 'btn_show_list' in request.form:
-     #       print("show list...")
-    #print("method func_test")
 
 
 ################################################################
@@ -148,6 +152,46 @@ def data_manager():
 
 ################################################################
 ############################接口相关####################################
+import json
+"""
+下载IP地址网页接口
+"""
+@csrf.exempt
+@app.route('/todo/api/v1.0/startDownloadIPHtml', methods=['GET', 'POST'])
+def start_download_htmls():
+    data = json.loads(request.form.get('data'))
+    start_page = data['startPage']
+    end_page = data['endPage']
+
+    MGIH.config(debug=True)
+    print("start page: " , start_page, " end page: " , end_page)
+
+    MGIH.init_grab_ip_html(start_page, end_page)
+    # 方法一：使用线程子类下载网页
+    # MGIH.start_grab_ip_html()
+
+    # 方法二：使用底层_thread线程下载网页
+    MGIH.start_download_ip_use_thread()
+
+    return jsonify({
+        'errCode':0,
+        'errMsg': '下载完毕'
+    })
+
+"""
+解析IP地址网页接口
+"""
+@csrf.exempt
+@app.route('/todo/api/v1.0/parseIPHtml', methods=['GET', 'POST'])
+def start_parse_ip_htmls():
+    # MGIH.start_parse_ip_use_basic_thread() # 使用底层_thread进行解析地址
+    MGIH.start_parse_ip_use_sub_thread() # 使用高级thread的子类进行解析地址
+    return jsonify({
+        'errCode': 0,
+        'errMsg': '解析完毕'
+    })
+
+
 @csrf.exempt
 @app.route('/todo/api/v1.0/tasks', methods=['GET', 'POST'])
 def get_tasks():

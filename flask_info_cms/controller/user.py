@@ -1,5 +1,6 @@
 # Author: Jason Lu
 from app import col_users
+from app import col_ips2
 
 
 class UserController(object):
